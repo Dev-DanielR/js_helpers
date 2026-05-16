@@ -5,7 +5,7 @@ A collection of light-weight helper functions designed to provide small DX impro
 The recommended way to install this repo is to clone with degit directly into your public assets folder.
 ```sh
 cd /path/to/web/assets
-degit https://github.com/Dev-DanielR/js_helpers.git js_helpers
+degit https://github.com/Dev-DanielR/js_helpers.git/src js_helpers
 ```
 
 ## Current helpers
