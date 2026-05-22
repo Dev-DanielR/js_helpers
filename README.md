@@ -2,7 +2,10 @@
 
 A collection of light-weight helper functions designed to provide small DX improvements to browser clients running vanilla js.
 
-The recommended way to install this repo is to clone with degit directly into your public assets folder.
+## Installation
+
+The recommended way to install this repository is using [degit](https://github.com/Rich-Harris/degit):
+
 ```sh
 cd /path/to/web/assets
 degit https://github.com/Dev-DanielR/js_helpers.git/src js_helpers
@@ -41,26 +44,34 @@ Dispatches a custom DOM event with optional data and supports cancellation via a
 
 ### `fetch.js`
 
-Provides a wrapper around the Fetch API to simplify HTTP requests and robustly handle various payload formats.
+Provides a wrapper around the native Fetch API to simplify HTTP requests and handle various payload formats (JSON, URL-encoded, FormData).
 
 #### API Reference
 
-**`fetchRequest(spec, controller = null, data = null)`**
+**`fetchRequest(spec, signal = null, headers = {}, data = null)`**
 Performs an HTTP request with flexible input handling.
 
-*   **`spec`**: The request specification string in the format `"METHOD:URL"` (e.g., `'POST:http://api.example.com'`).
-*   **`controller`** (Optional): An `AbortController` to allow cancellation of the request.
-*   **`data`** (Optional): The request payload. Supported types include:
-    *   `FormData`: Sent directly as the request body.
-    *   `string`: Treated as a CSS selector; used to construct `FormData`.
-    *   `Object`: Encoded as `application/x-www-form-urlencoded`, unless it contains arrays, `File`, or `Blob`, in which case `multipart/form-data` is used.
+*   **`spec`**: The request specification string in the format `"METHOD URL"` (e.g., `'POST https://api.example.com'`).
+*   **`signal`** (Optional): An `AbortSignal` to allow request cancellation.
+*   **`headers`** (Optional): Request headers, provided as an object or array of objects.
+*   **`data`** (Optional): The request payload. Supported types are:
+    *   `Object`: Encoded as `application/x-www-form-urlencoded`.
+    *   `FormData`: Sent directly as the request body (for `multipart/form-data`).
+    *   `string`: Used to construct form data.
     *   `null`: No request body is sent.
+
+**Header predicates:**
+The module provides pre-defined functions to generate commonly used headers:
+
+*   `headerNoCache()`: Sets `Cache-Control` to `no-cache`.
+*   `headerAuthorize(token)`: Sets `Authorization` to `Bearer <token>`
+*   `headerTypes(outgoing, incoming)`: Sets 'Content-Type' and 'Accept' via shorthands: `json`, `form-urlencoded`, `form-data`, `html`, `text`.
 
 ## Usage Examples
 
-### `events.js` Example (Subscription)
+### `events.js` Example (Suscribe to div click )
 
-```javascript
+```js
 import { subscribe, matchExactTarget } from './events.js';
 
 const myDiv = document.getElementById('my-target');
@@ -76,14 +87,27 @@ const unsubscribe = subscribe(
 unsubscribe();
 ```
 
-### `fetch.js` Example (POST Request with JSON Data)
+### `fetch.js` Example (Cancellable POST request with headers and JSON data)
 
-```javascript
-import { fetchRequest } from './fetch.js';
+```js
+import { fetchRequest, headerAuthorize, headerTypes } from './fetch.js';
 
-const payload = { username: 'alice', password: 'secret' };
-const spec = 'POST:http://localhost:3000/api/login';
+const controller = new AbortController();
 
-// data is an Object, handled as application/x-www-form-urlencoded
-fetchRequest(spec, null, payload);
+//Performs the fetch request
+fetchRequest(
+    'POST https://api.example.com/login',
+    controller.signal,
+    [headerAuthorize('my_secret_123'), headerTypes('json', 'json')],
+    { username: 'alice', password: 'secret' }
+).then(async res => {
+    const { success, error } = await res.json();
+    console.log(success ? 'Login OK!' : error);
+});
+
+//Cancel request if timeout is exceeded
+setTimeout(() => {
+    console.log('Could not login!');
+    controller.abort();
+}, 1000);
 ```
