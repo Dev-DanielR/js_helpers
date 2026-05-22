@@ -25,6 +25,13 @@ function subscribe(spec, match, func) {
     const [name, flags = 'bubble+default'] = spec.split(':');
     const [phase, control] = flags.split('+');
 
+    if (!['bubble', 'capture'].includes(phase)) {
+        throw new Error(`Unsupported phase ${phase}`);
+    }
+    if (!['default', 'block', 'prevent', 'stop'].includes(control)) {
+        throw new Error(`Unsupported control ${control}`);
+    }
+
     const handler = e => {
         if (e.detail?.signal?.aborted) return;
         if (!match || match(e)) {
@@ -58,8 +65,9 @@ function subscribe(spec, match, func) {
  * controller.abort(); // Cancels downstream listeners
  */
 function launch(name, data, controller = null) {
-    if (controller) data.signal = controller.signal;
-    document.dispatchEvent(new CustomEvent(name, { detail: data }));
+    const detail = { ...data };
+    if (controller) detail.signal = controller.signal;
+    document.dispatchEvent(new CustomEvent(name, { detail }));
 }
 
 /**
@@ -93,7 +101,11 @@ const matchContainsTarget = ref => e => ref.contains(e.target);
  * @example
  * subscribe('click', matchClosestTarget(myButton), e => console.log('Closest match triggered'));
  */
-const matchClosestTarget = ref => e => e.target.closest(ref.tagName.toLowerCase() + '.' + ref.className);
+const matchClosestTarget = ref => e => {
+    const classes  = Array.from(ref.classList);
+    const selector = ref.tagName.toLowerCase() + (classes.length ? '.' + classes.join('.') : '');
+    return e.target.closest(selector) !== null;
+};
 
 /**
  * Matches events where the event detail contains a specific ID.
@@ -107,7 +119,7 @@ const matchClosestTarget = ref => e => e.target.closest(ref.tagName.toLowerCase(
 const matchDetailId = id => e => e.detail?.id === id;
 
 /**
- * Matches events if the given object exists (is not undefined).
+ * Matches events if the given object is still defined (not null/undefined) at the time of the event.
  *
  * @param {*} obj - The object to check for existence.
  * @returns {() => boolean} Predicate function that returns true if the object is defined.
@@ -116,4 +128,4 @@ const matchDetailId = id => e => e.detail?.id === id;
  * const myObj = { foo: 'bar' };
  * subscribe('init', matchExists(myObj), e => console.log('Object exists!'));
  */
-const matchExists = obj => () => obj !== undefined;
+const matchExists = obj => () => obj !== null && obj !== undefined;
